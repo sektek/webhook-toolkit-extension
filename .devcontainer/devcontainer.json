@@ -1,9 +1,9 @@
 {
-  "name": "Project Name",
+  "name": "Webhook Toolkit Extension",
   "build": {
     "dockerfile": "Dockerfile"
   },
-  "workspaceFolder": "/workspaces/project-name",
+  "workspaceFolder": "/workspaces/webhook-toolkit-extension",
   "shutdownAction": "none",
   "features": {
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
