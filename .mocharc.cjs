@@ -1,5 +1,5 @@
 module.exports = {
-  import: 'tsx/esm',
+  require: 'tsx/cjs',
   ui: 'bdd',
   spec: ['**/*.spec.ts'],
 };
