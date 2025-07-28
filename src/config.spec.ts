@@ -1,10 +1,8 @@
-import { describe, it } from 'mocha';
-
 import { WebhookConfig } from './config';
 import { expect } from 'chai';
 
-describe('Configuration Module', () => {
-  it('should export WebhookConfig interface with correct structure', () => {
+describe('Configuration Module', function () {
+  it('should export WebhookConfig interface with correct structure', function () {
     // Create a test configuration object to validate the interface
     const testConfig: WebhookConfig = {
       server: {
@@ -30,7 +28,7 @@ describe('Configuration Module', () => {
     expect(testConfig.storage.maxRequests).to.be.a('number');
   });
 
-  it('should validate configuration constraints', () => {
+  it('should validate configuration constraints', function () {
     // Test valid port range
     const validConfig: WebhookConfig = {
       server: {

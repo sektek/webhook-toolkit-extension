@@ -1,11 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { describe, it } from 'mocha';
 import { expect } from 'chai';
 
-describe('Webhook Extension', () => {
-  it('should have compiled extension.js with required exports', () => {
+describe('Webhook Extension', function () {
+  it('should have compiled extension.js with required exports', function () {
     const extensionPath = path.join(__dirname, '..', 'out', 'extension.js');
 
     // Verify the file exists
