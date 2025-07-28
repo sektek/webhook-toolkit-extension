@@ -20,6 +20,14 @@
       {
         "command": "webhookTool.showConfig",
         "title": "Show Webhook Configuration"
+      },
+      {
+        "command": "webhookTool.startServer",
+        "title": "Start Webhook Server"
+      },
+      {
+        "command": "webhookTool.stopServer",
+        "title": "Stop Webhook Server"
       }
     ],
     "configuration": {
