@@ -2,11 +2,11 @@ import { expect } from 'chai';
 import { InMemoryRequestStorage, WebhookRequest } from './request-storage';
 import { WebhookConfig } from './config';
 
-describe('Request Storage', () => {
+describe('Request Storage', function () {
   let requestStorage: InMemoryRequestStorage;
   let config: WebhookConfig;
 
-  beforeEach(() => {
+  beforeEach(function () {
     config = {
       server: {
         port: 3000,
@@ -22,13 +22,13 @@ describe('Request Storage', () => {
     requestStorage = new InMemoryRequestStorage(config);
   });
 
-  describe('Request Management', () => {
-    it('should start with zero requests', () => {
+  describe('Request Management', function () {
+    it('should start with zero requests', function () {
       expect(requestStorage.getRequestCount()).to.equal(0);
       expect(requestStorage.getRequests()).to.deep.equal([]);
     });
 
-    it('should add and retrieve requests', () => {
+    it('should add and retrieve requests', function () {
       const request: WebhookRequest = {
         id: '1',
         timestamp: new Date(),
@@ -46,7 +46,7 @@ describe('Request Storage', () => {
       expect(requestStorage.getRequests()[0]).to.deep.equal(request);
     });
 
-    it('should maintain most recent first order', () => {
+    it('should maintain most recent first order', function () {
       const request1: WebhookRequest = {
         id: '1',
         timestamp: new Date(),
@@ -75,7 +75,7 @@ describe('Request Storage', () => {
       expect(requests[1].id).to.equal('1');
     });
 
-    it('should enforce max requests limit', () => {
+    it('should enforce max requests limit', function () {
       // Add more requests than the limit
       for (let i = 0; i < 7; i++) {
         const request: WebhookRequest = {
@@ -96,7 +96,7 @@ describe('Request Storage', () => {
       expect(requests[4].id).to.equal('2'); // Oldest kept
     });
 
-    it('should clear all requests', () => {
+    it('should clear all requests', function () {
       const request: WebhookRequest = {
         id: '1',
         timestamp: new Date(),
@@ -115,7 +115,7 @@ describe('Request Storage', () => {
       expect(requestStorage.getRequests()).to.deep.equal([]);
     });
 
-    it('should update configuration and trim requests if needed', () => {
+    it('should update configuration and trim requests if needed', function () {
       // Add 5 requests (at the limit)
       for (let i = 0; i < 5; i++) {
         const request: WebhookRequest = {
