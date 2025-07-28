@@ -84,7 +84,7 @@ export class WebhookServerImpl implements WebhookServer {
    */
   private setupRoutes(): void {
     // Handle POST and PUT requests to any path using middleware
-    this.app.use((req: Request, res: Response, next) => {
+    this.app.use((req: Request, res: Response) => {
       if (req.method === 'POST' || req.method === 'PUT') {
         this.handleWebhookRequest(req, res);
       } else {
