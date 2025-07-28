@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import { Server } from 'http';
+import { v4 as uuidv4 } from 'uuid';
+
 import { WebhookConfig } from './config';
+import { WebhookRequest, RequestStorage } from './request-storage';
 
 /**
  * Interface defining the webhook server contract
@@ -34,8 +37,9 @@ export interface WebhookServer {
   /**
    * Update the server configuration
    * @param config The new configuration to use
+   * @param requestStorage Optional request storage instance
    */
-  updateConfig(config: WebhookConfig): void;
+  updateConfig(config: WebhookConfig, requestStorage?: RequestStorage): void;
 }
 
 /**
@@ -46,20 +50,26 @@ export class WebhookServerImpl implements WebhookServer {
   private server: Server | null = null;
   private currentPort: number | null = null;
   private config: WebhookConfig;
+  private requestStorage: RequestStorage | null = null;
 
-  constructor(config: WebhookConfig) {
+  constructor(config: WebhookConfig, requestStorage?: RequestStorage) {
     this.config = config;
+    this.requestStorage = requestStorage || null;
     this.app = express();
     this.setupMiddleware();
     this.setupRoutes();
   }
 
   /**
-   * Update the server configuration
+   * Update the server configuration and request storage
    * @param config The new configuration to use
+   * @param requestStorage Optional request storage instance
    */
-  updateConfig(config: WebhookConfig): void {
+  updateConfig(config: WebhookConfig, requestStorage?: RequestStorage): void {
     this.config = config;
+    if (requestStorage) {
+      this.requestStorage = requestStorage;
+    }
   }
 
   /**
@@ -101,6 +111,21 @@ export class WebhookServerImpl implements WebhookServer {
     // Log the request
     // eslint-disable-next-line no-console
     console.log(`Request received: ${req.method} ${req.path}`);
+
+    // Store the request if storage is available
+    if (this.requestStorage) {
+      const webhookRequest: WebhookRequest = {
+        id: uuidv4(),
+        timestamp: new Date(),
+        method: req.method,
+        path: req.path,
+        headers: req.headers as Record<string, string | string[]>,
+        body: req.body,
+        responseCode: this.config.server.responseCode,
+      };
+
+      this.requestStorage.addRequest(webhookRequest);
+    }
 
     // Set response headers from configuration
     Object.entries(this.config.server.responseHeaders).forEach(
