@@ -16,8 +16,56 @@
       {
         "command": "webhookTool.test",
         "title": "Test Webhook Extension"
+      },
+      {
+        "command": "webhookTool.showConfig",
+        "title": "Show Webhook Configuration"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Webhook Toolkit",
+      "properties": {
+        "webhookTool.server.port": {
+          "type": "number",
+          "default": 3000,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Port number for the webhook server"
+        },
+        "webhookTool.server.autoFindPort": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically find an available port if the specified port is in use"
+        },
+        "webhookTool.server.responseCode": {
+          "type": "number",
+          "default": 201,
+          "minimum": 200,
+          "maximum": 299,
+          "description": "HTTP response code to return for webhook requests"
+        },
+        "webhookTool.server.responseHeaders": {
+          "type": "object",
+          "default": {},
+          "description": "HTTP response headers to include in webhook responses",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "webhookTool.server.responseBody": {
+          "type": "string",
+          "default": "",
+          "description": "HTTP response body to return for webhook requests"
+        },
+        "webhookTool.storage.maxRequests": {
+          "type": "number",
+          "default": 100,
+          "minimum": 1,
+          "maximum": 10000,
+          "description": "Maximum number of webhook requests to store in memory"
+        }
+      }
+    }
   },
   "author": "Edward Kelly <eddie@sektek.net>",
   "repository": {
