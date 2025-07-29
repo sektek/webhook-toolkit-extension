@@ -28,6 +28,10 @@
       {
         "command": "webhookTool.stopServer",
         "title": "Stop Webhook Server"
+      },
+      {
+        "command": "webhookTool.clearStorage",
+        "title": "Clear Webhook Storage"
       }
     ],
     "configuration": {
