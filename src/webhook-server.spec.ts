@@ -36,12 +36,14 @@ describe('Webhook Server', function () {
       expect(server).to.have.property('isRunning');
       expect(server).to.have.property('getPort');
       expect(server).to.have.property('updateConfig');
+      expect(server).to.have.property('setStorage');
 
       expect(server.start).to.be.a('function');
       expect(server.stop).to.be.a('function');
       expect(server.isRunning).to.be.a('function');
       expect(server.getPort).to.be.a('function');
       expect(server.updateConfig).to.be.a('function');
+      expect(server.setStorage).to.be.a('function');
     });
 
     it('should return false for isRunning when not started', function () {
@@ -148,6 +150,29 @@ describe('Webhook Server', function () {
 
       // Should not throw error
       server.updateConfig(newConfig);
+    });
+  });
+
+  describe('Storage Integration', function () {
+    it('should set storage without throwing error', function () {
+      // Create a mock storage implementation
+      const mockStorage = {
+        saveRequest: async () => {},
+        getRequests: async () => [],
+        getRequest: async () => undefined,
+        deleteRequest: async () => {},
+        clearAll: async () => {},
+        cleanup: async () => {},
+      };
+
+      // Should not throw error
+      server.setStorage(mockStorage);
+    });
+
+    it('should handle null storage gracefully', function () {
+      // Should not throw error when storage is not set
+      const serverWithoutStorage = new WebhookServerImpl(config);
+      expect(serverWithoutStorage.isRunning()).to.be.false;
     });
   });
 });

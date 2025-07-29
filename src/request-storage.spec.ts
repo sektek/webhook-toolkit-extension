@@ -5,7 +5,6 @@ import { FileRequestStorage } from './request-storage';
 import { RequestRecord } from './request-record';
 import { expect } from 'chai';
 
-
 // Mock vscode ExtensionContext for testing
 interface MockExtensionContext {
   storageUri?: { fsPath: string };

@@ -1,6 +1,10 @@
+/* eslint-disable sort-imports */
 import express, { Request, Response } from 'express';
 import { Server } from 'http';
 import { WebhookConfig } from './config';
+import { createRequestRecord } from './request-factory';
+import { RequestStorage } from './request-storage';
+/* eslint-enable sort-imports */
 
 /**
  * Interface defining the webhook server contract
@@ -36,6 +40,12 @@ export interface WebhookServer {
    * @param config The new configuration to use
    */
   updateConfig(config: WebhookConfig): void;
+
+  /**
+   * Set the storage instance for capturing webhook requests
+   * @param storage The RequestStorage instance to use
+   */
+  setStorage(storage: RequestStorage): void;
 }
 
 /**
@@ -46,9 +56,11 @@ export class WebhookServerImpl implements WebhookServer {
   private server: Server | null = null;
   private currentPort: number | null = null;
   private config: WebhookConfig;
+  private storage: RequestStorage | null = null;
 
-  constructor(config: WebhookConfig) {
+  constructor(config: WebhookConfig, storage?: RequestStorage) {
     this.config = config;
+    this.storage = storage || null;
     this.app = express();
     this.setupMiddleware();
     this.setupRoutes();
@@ -60,6 +72,14 @@ export class WebhookServerImpl implements WebhookServer {
    */
   updateConfig(config: WebhookConfig): void {
     this.config = config;
+  }
+
+  /**
+   * Set the storage instance for capturing webhook requests
+   * @param storage The RequestStorage instance to use
+   */
+  setStorage(storage: RequestStorage): void {
+    this.storage = storage;
   }
 
   /**
@@ -77,6 +97,18 @@ export class WebhookServerImpl implements WebhookServer {
 
     // Parse URL-encoded bodies with 10MB limit
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+    // Add request capture middleware
+    this.app.use(async (req: Request, res: Response, next) => {
+      try {
+        await this.captureRequest(req);
+      } catch (error) {
+        // Log storage errors but don't block the request
+        // eslint-disable-next-line no-console
+        console.error('Error capturing request to storage:', error);
+      }
+      next();
+    });
   }
 
   /**
@@ -95,6 +127,52 @@ export class WebhookServerImpl implements WebhookServer {
   }
 
   /**
+   * Capture request data to storage
+   */
+  private async captureRequest(req: Request): Promise<void> {
+    // Only capture POST and PUT requests
+    if (req.method !== 'POST' && req.method !== 'PUT') {
+      return;
+    }
+
+    if (!this.storage) {
+      // eslint-disable-next-line no-console
+      console.warn('Storage not configured, request will not be saved');
+      return;
+    }
+
+    try {
+      // Extract client IP address
+      const ip = req.ip || req.socket.remoteAddress || 'unknown';
+
+      // Create request record using factory
+      const requestRecord = createRequestRecord(req, ip);
+
+      // Save request to storage asynchronously
+      await this.storage.saveRequest(requestRecord);
+
+      // Trigger cleanup after saving
+      setImmediate(async () => {
+        try {
+          await this.storage?.cleanup();
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error('Error during storage cleanup:', error);
+        }
+      });
+
+      // eslint-disable-next-line no-console
+      console.log(
+        `Request captured: ${req.method} ${req.path} (ID: ${requestRecord.id})`,
+      );
+    } catch (error) {
+      // Log error but don't throw to avoid blocking request processing
+      // eslint-disable-next-line no-console
+      console.error('Error capturing request:', error);
+    }
+  }
+
+  /**
    * Handle incoming webhook requests
    */
   private handleWebhookRequest(req: Request, res: Response): void {
@@ -102,17 +180,37 @@ export class WebhookServerImpl implements WebhookServer {
     // eslint-disable-next-line no-console
     console.log(`Request received: ${req.method} ${req.path}`);
 
-    // Set response headers from configuration
-    Object.entries(this.config.server.responseHeaders).forEach(
-      ([key, value]) => {
-        res.setHeader(key, value);
-      },
-    );
+    try {
+      // Set response headers from configuration, handling conflicts gracefully
+      Object.entries(this.config.server.responseHeaders).forEach(
+        ([key, value]) => {
+          try {
+            res.setHeader(key, value);
+          } catch (error) {
+            // eslint-disable-next-line no-console
+            console.warn(`Failed to set response header ${key}: ${error}`);
+          }
+        },
+      );
 
-    // Send response with configured status code and body
-    res
-      .status(this.config.server.responseCode)
-      .send(this.config.server.responseBody);
+      // Set appropriate Content-Type for response body if not already set
+      if (this.config.server.responseBody && !res.getHeader('content-type')) {
+        res.setHeader('content-type', 'text/plain');
+      }
+
+      // Send response with configured status code and body
+      res
+        .status(this.config.server.responseCode)
+        .send(this.config.server.responseBody);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error handling webhook request:', error);
+
+      // Send error response if headers haven't been sent yet
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
   }
 
   /**
