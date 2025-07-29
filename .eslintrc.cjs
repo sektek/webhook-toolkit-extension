@@ -1,4 +1,6 @@
 module.exports = {
   extends: ['plugin:@sektek/typescript'],
-  rules: {},
+  rules: {
+    'sort-imports': 'off',
+  },
 };

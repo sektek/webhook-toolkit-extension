@@ -28,8 +28,31 @@
       {
         "command": "webhookTool.stopServer",
         "title": "Stop Webhook Server"
+      },
+      {
+        "command": "webhookToolKit.openSidebar",
+        "title": "Open Webhook Toolkit Sidebar"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "webhookToolkit",
+          "title": "Webhook Toolkit",
+          "icon": "$(link)"
+        }
+      ]
+    },
+    "views": {
+      "webhookToolkit": [
+        {
+          "id": "webhookToolkit.sidebar",
+          "name": "Server Controls",
+          "type": "webview",
+          "when": "true"
+        }
+      ]
+    },
     "configuration": {
       "title": "Webhook Toolkit",
       "properties": {
