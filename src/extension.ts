@@ -1,9 +1,13 @@
 import * as vscode from 'vscode';
+import { FileRequestStorage, RequestStorage } from './request-storage';
 import { WebhookConfig, getConfiguration } from './config';
 import { WebhookServer, WebhookServerImpl } from './webhook-server';
 
 // Global webhook server instance
 let webhookServer: WebhookServer | null = null;
+
+// Global request storage instance
+let requestStorage: RequestStorage | null = null;
 
 /**
  * This method is called when your extension is activated
@@ -17,6 +21,9 @@ export function activate(context: vscode.ExtensionContext) {
   const config = getConfiguration();
   // eslint-disable-next-line no-console
   console.log('Webhook Extension configuration loaded:', config);
+
+  // Initialize request storage
+  requestStorage = new FileRequestStorage(context, config.storage.maxRequests);
 
   // Create webhook server instance
   webhookServer = new WebhookServerImpl(config);
@@ -101,6 +108,37 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  // Register the clear storage command
+  const clearStorageDisposable = vscode.commands.registerCommand(
+    'webhookTool.clearStorage',
+    async () => {
+      if (!requestStorage) {
+        vscode.window.showErrorMessage('Request storage not initialized');
+        return;
+      }
+
+      try {
+        const confirmation = await vscode.window.showWarningMessage(
+          'Are you sure you want to clear all stored webhook requests? This action cannot be undone.',
+          { modal: true },
+          'Clear All',
+          'Cancel',
+        );
+
+        if (confirmation === 'Clear All') {
+          await requestStorage.clearAll();
+          vscode.window.showInformationMessage(
+            'All stored webhook requests have been cleared successfully',
+          );
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to clear storage: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+    },
+  );
+
   // Listen for configuration changes
   const configChangeDisposable = vscode.workspace.onDidChangeConfiguration(
     async e => {
@@ -113,6 +151,7 @@ export function activate(context: vscode.ExtensionContext) {
     showConfigDisposable,
     startServerDisposable,
     stopServerDisposable,
+    clearStorageDisposable,
     configChangeDisposable,
   );
 }
