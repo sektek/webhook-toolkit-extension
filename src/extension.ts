@@ -1,16 +1,9 @@
 import * as vscode from 'vscode';
-
-import { WebhookSidebarProvider } from './sidebar-provider';
-import { InMemoryRequestStorage, RequestStorage } from './request-storage';
 import { WebhookConfig, getConfiguration } from './config';
 import { WebhookServer, WebhookServerImpl } from './webhook-server';
 
 // Global webhook server instance
 let webhookServer: WebhookServer | null = null;
-// Global request storage instance
-let requestStorage: RequestStorage | null = null;
-// Global sidebar provider instance
-let sidebarProvider: WebhookSidebarProvider | null = null;
 
 /**
  * This method is called when your extension is activated
@@ -25,24 +18,8 @@ export function activate(context: vscode.ExtensionContext) {
   // eslint-disable-next-line no-console
   console.log('Webhook Extension configuration loaded:', config);
 
-  // Create request storage instance
-  requestStorage = new InMemoryRequestStorage(config);
-
-  // Create webhook server instance with request storage
-  webhookServer = new WebhookServerImpl(config, requestStorage);
-
-  // Create and register sidebar provider
-  sidebarProvider = new WebhookSidebarProvider(
-    context.extensionUri,
-    webhookServer,
-    requestStorage,
-  );
-  context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      WebhookSidebarProvider.viewType,
-      sidebarProvider,
-    ),
-  );
+  // Create webhook server instance
+  webhookServer = new WebhookServerImpl(config);
 
   // Register the test command
   const testDisposable = vscode.commands.registerCommand(
@@ -86,11 +63,6 @@ export function activate(context: vscode.ExtensionContext) {
           currentConfig.server.autoFindPort,
         );
 
-        // Update sidebar status
-        if (sidebarProvider) {
-          sidebarProvider.updateStatus();
-        }
-
         vscode.window.showInformationMessage(
           `Webhook server started successfully on port ${actualPort}`,
         );
@@ -118,12 +90,6 @@ export function activate(context: vscode.ExtensionContext) {
 
       try {
         await webhookServer.stop();
-
-        // Update sidebar status
-        if (sidebarProvider) {
-          sidebarProvider.updateStatus();
-        }
-
         vscode.window.showInformationMessage(
           'Webhook server stopped successfully',
         );
@@ -132,14 +98,6 @@ export function activate(context: vscode.ExtensionContext) {
           `Failed to stop webhook server: ${error instanceof Error ? error.message : error}`,
         );
       }
-    },
-  );
-
-  // Register the open sidebar command
-  const openSidebarDisposable = vscode.commands.registerCommand(
-    'webhookToolKit.openSidebar',
-    () => {
-      vscode.commands.executeCommand('workbench.view.extension.webhookToolkit');
     },
   );
 
@@ -155,7 +113,6 @@ export function activate(context: vscode.ExtensionContext) {
     showConfigDisposable,
     startServerDisposable,
     stopServerDisposable,
-    openSidebarDisposable,
     configChangeDisposable,
   );
 }
@@ -173,17 +130,7 @@ async function handleConfigurationChange(
 
     // Update server configuration
     if (webhookServer) {
-      webhookServer.updateConfig(newConfig, requestStorage || undefined);
-    }
-
-    // Update request storage configuration
-    if (requestStorage) {
-      requestStorage.updateConfig(newConfig);
-    }
-
-    // Update sidebar status
-    if (sidebarProvider) {
-      sidebarProvider.updateStatus();
+      webhookServer.updateConfig(newConfig);
     }
 
     // If server is running, ask user if they want to restart it
@@ -223,11 +170,6 @@ async function restartWebhookServer(config: WebhookConfig): Promise<void> {
     vscode.window.showInformationMessage(
       `Webhook server restarted successfully on port ${actualPort}`,
     );
-
-    // Update sidebar status
-    if (sidebarProvider) {
-      sidebarProvider.updateStatus();
-    }
   } catch (error) {
     vscode.window.showErrorMessage(
       `Failed to restart webhook server: ${error instanceof Error ? error.message : error}`,
@@ -274,6 +216,4 @@ export async function deactivate() {
   }
 
   webhookServer = null;
-  requestStorage = null;
-  sidebarProvider = null;
 }
