@@ -1,7 +1,7 @@
-import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { RequestRecord, StorageMetadata, StorageSchema } from './request-record';
+import * as vscode from 'vscode';
+import { RequestRecord, StorageSchema } from './request-record';
 
 /**
  * Interface defining storage operations for webhook requests
@@ -55,7 +55,7 @@ export class FileRequestStorage implements RequestStorage {
     // Use VS Code's workspace storage URI for file location
     this.storageFilePath = path.join(
       context.storageUri?.fsPath || context.globalStorageUri.fsPath,
-      'webhook-requests.json'
+      'webhook-requests.json',
     );
     this.maxRequests = maxRequests;
   }
@@ -66,13 +66,13 @@ export class FileRequestStorage implements RequestStorage {
   async saveRequest(request: RequestRecord): Promise<void> {
     try {
       const schema = await this.loadSchema();
-      
+
       // Add the new request
       schema.requests.push(request);
-      
+
       // Update metadata
       schema.metadata.totalRequestsReceived++;
-      
+
       // Check if cleanup is needed
       if (schema.requests.length > this.maxRequests) {
         // Remove oldest requests (FIFO)
@@ -80,10 +80,12 @@ export class FileRequestStorage implements RequestStorage {
         schema.requests.splice(0, excessCount);
         schema.metadata.lastCleanup = new Date();
       }
-      
+
       await this.saveSchema(schema);
     } catch (error) {
-      throw new Error(`Failed to save request: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `Failed to save request: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 
@@ -95,7 +97,9 @@ export class FileRequestStorage implements RequestStorage {
       const schema = await this.loadSchema();
       return schema.requests;
     } catch (error) {
-      throw new Error(`Failed to get requests: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `Failed to get requests: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 
@@ -107,7 +111,9 @@ export class FileRequestStorage implements RequestStorage {
       const schema = await this.loadSchema();
       return schema.requests.find(request => request.id === id);
     } catch (error) {
-      throw new Error(`Failed to get request: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `Failed to get request: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 
@@ -119,13 +125,15 @@ export class FileRequestStorage implements RequestStorage {
       const schema = await this.loadSchema();
       const initialLength = schema.requests.length;
       schema.requests = schema.requests.filter(request => request.id !== id);
-      
+
       // Only save if we actually removed something
       if (schema.requests.length < initialLength) {
         await this.saveSchema(schema);
       }
     } catch (error) {
-      throw new Error(`Failed to delete request: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `Failed to delete request: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 
@@ -139,7 +147,9 @@ export class FileRequestStorage implements RequestStorage {
       // Keep totalRequestsReceived as historical data
       await this.saveSchema(schema);
     } catch (error) {
-      throw new Error(`Failed to clear requests: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `Failed to clear requests: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 
@@ -149,7 +159,7 @@ export class FileRequestStorage implements RequestStorage {
   async cleanup(): Promise<void> {
     try {
       const schema = await this.loadSchema();
-      
+
       if (schema.requests.length > this.maxRequests) {
         // Remove oldest requests (FIFO)
         const excessCount = schema.requests.length - this.maxRequests;
@@ -158,7 +168,9 @@ export class FileRequestStorage implements RequestStorage {
         await this.saveSchema(schema);
       }
     } catch (error) {
-      throw new Error(`Failed to cleanup requests: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `Failed to cleanup requests: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 
@@ -169,15 +181,15 @@ export class FileRequestStorage implements RequestStorage {
     try {
       // Ensure storage directory exists
       await this.ensureStorageDirectory();
-      
+
       // Try to read existing file
       const fileContent = await fs.readFile(this.storageFilePath, 'utf8');
       const data = JSON.parse(fileContent);
-      
+
       // Validate and convert date strings back to Date objects
       return this.deserializeSchema(data);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      if ((error as { code?: string }).code === 'ENOENT') {
         // File doesn't exist, create default schema
         return this.createDefaultSchema();
       } else if (error instanceof SyntaxError) {
@@ -196,14 +208,14 @@ export class FileRequestStorage implements RequestStorage {
   private async saveSchema(schema: StorageSchema): Promise<void> {
     // Ensure storage directory exists
     await this.ensureStorageDirectory();
-    
+
     // Serialize the schema with proper Date handling
     const serializedData = this.serializeSchema(schema);
     const jsonData = JSON.stringify(serializedData, null, 2);
-    
+
     // Use atomic write: write to temp file then rename
     const tempFilePath = `${this.storageFilePath}.tmp`;
-    
+
     try {
       await fs.writeFile(tempFilePath, jsonData, 'utf8');
       await fs.rename(tempFilePath, this.storageFilePath);
@@ -223,7 +235,7 @@ export class FileRequestStorage implements RequestStorage {
    */
   private async ensureStorageDirectory(): Promise<void> {
     const storageDir = path.dirname(this.storageFilePath);
-    
+
     try {
       await fs.access(storageDir);
     } catch {
@@ -251,7 +263,7 @@ export class FileRequestStorage implements RequestStorage {
    */
   private async handleCorruptedFile(): Promise<void> {
     const backupPath = `${this.storageFilePath}.backup.${Date.now()}`;
-    
+
     try {
       await fs.copyFile(this.storageFilePath, backupPath);
       // eslint-disable-next-line no-console
@@ -269,7 +281,14 @@ export class FileRequestStorage implements RequestStorage {
   /**
    * Serialize schema for JSON storage, converting Dates to ISO strings
    */
-  private serializeSchema(schema: StorageSchema): any {
+  private serializeSchema(schema: StorageSchema): {
+    metadata: {
+      version: string;
+      lastCleanup: string;
+      totalRequestsReceived: number;
+    };
+    requests: Array<Omit<RequestRecord, 'timestamp'> & { timestamp: string }>;
+  } {
     return {
       metadata: {
         ...schema.metadata,
@@ -285,25 +304,29 @@ export class FileRequestStorage implements RequestStorage {
   /**
    * Deserialize schema from JSON storage, converting ISO strings back to Dates
    */
-  private deserializeSchema(data: any): StorageSchema {
+  private deserializeSchema(data: unknown): StorageSchema {
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid storage data format');
     }
 
-    if (!data.metadata || !Array.isArray(data.requests)) {
+    const objectData = data as Record<string, unknown>;
+    if (!objectData.metadata || !Array.isArray(objectData.requests)) {
       throw new Error('Missing required storage schema properties');
     }
 
+    const metadata = objectData.metadata as Record<string, unknown>;
+    const requests = objectData.requests as Array<Record<string, unknown>>;
+
     return {
       metadata: {
-        version: data.metadata.version || this.storageVersion,
-        lastCleanup: new Date(data.metadata.lastCleanup),
-        totalRequestsReceived: data.metadata.totalRequestsReceived || 0,
+        version: (metadata.version as string) || this.storageVersion,
+        lastCleanup: new Date(metadata.lastCleanup as string),
+        totalRequestsReceived: (metadata.totalRequestsReceived as number) || 0,
       },
-      requests: data.requests.map((request: any) => ({
+      requests: requests.map((request: Record<string, unknown>) => ({
         ...request,
-        timestamp: new Date(request.timestamp),
-      })),
+        timestamp: new Date(request.timestamp as string),
+      })) as RequestRecord[],
     };
   }
 }

@@ -1,8 +1,8 @@
-import { expect } from 'chai';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { FileRequestStorage } from './request-storage';
+import { expect } from 'chai';
 import { RequestRecord } from './request-record';
+import { FileRequestStorage } from './request-storage';
 
 // Mock vscode ExtensionContext for testing
 interface MockExtensionContext {
@@ -17,8 +17,13 @@ describe('Request Storage Module', function () {
 
   beforeEach(async function () {
     // Create a temporary storage directory for testing
-    tempStorageDir = path.join(__dirname, '..', 'test-storage', `test-${Date.now()}`);
-    
+    tempStorageDir = path.join(
+      __dirname,
+      '..',
+      'test-storage',
+      `test-${Date.now()}`,
+    );
+
     // Mock VS Code extension context
     mockContext = {
       storageUri: { fsPath: tempStorageDir },
@@ -26,7 +31,11 @@ describe('Request Storage Module', function () {
     };
 
     // Create storage instance with small max requests for testing
-    storage = new FileRequestStorage(mockContext as any, 3);
+    storage = new FileRequestStorage(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockContext as any,
+      3,
+    );
   });
 
   afterEach(async function () {
@@ -114,7 +123,7 @@ describe('Request Storage Module', function () {
       };
 
       await storage.saveRequest(testRequest);
-      
+
       // Verify it exists
       let retrievedRequest = await storage.getRequest('test-id-to-delete');
       expect(retrievedRequest).to.not.be.undefined;
@@ -264,7 +273,9 @@ describe('Request Storage Module', function () {
 
       expect(retrievedRequest).to.not.be.undefined;
       expect(retrievedRequest!.timestamp).to.be.instanceOf(Date);
-      expect(retrievedRequest!.timestamp.getTime()).to.equal(testDate.getTime());
+      expect(retrievedRequest!.timestamp.getTime()).to.equal(
+        testDate.getTime(),
+      );
     });
 
     it('should handle empty storage file correctly', async function () {
@@ -277,7 +288,7 @@ describe('Request Storage Module', function () {
     it('should handle delete operation gracefully when request does not exist', async function () {
       // Should not throw error when deleting non-existent request
       await storage.deleteRequest('non-existent-id');
-      
+
       // Should still work normally
       const allRequests = await storage.getRequests();
       expect(allRequests).to.have.length(0);
@@ -302,7 +313,10 @@ describe('Request Storage Module', function () {
       }
 
       // Access the storage file directly to check metadata
-      const storageFilePath = path.join(tempStorageDir, 'webhook-requests.json');
+      const storageFilePath = path.join(
+        tempStorageDir,
+        'webhook-requests.json',
+      );
       const fileContent = await fs.readFile(storageFilePath, 'utf8');
       const data = JSON.parse(fileContent);
 
@@ -332,7 +346,10 @@ describe('Request Storage Module', function () {
       await storage.clearAll();
 
       // Check that total count is preserved
-      const storageFilePath = path.join(tempStorageDir, 'webhook-requests.json');
+      const storageFilePath = path.join(
+        tempStorageDir,
+        'webhook-requests.json',
+      );
       const fileContent = await fs.readFile(storageFilePath, 'utf8');
       const data = JSON.parse(fileContent);
 

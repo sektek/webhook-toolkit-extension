@@ -1,5 +1,9 @@
+import {
+  RequestRecord,
+  StorageMetadata,
+  StorageSchema,
+} from './request-record';
 import { expect } from 'chai';
-import { RequestRecord, StorageMetadata, StorageSchema } from './request-record';
 
 describe('Request Record Module', function () {
   describe('RequestRecord Interface', function () {

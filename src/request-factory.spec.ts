@@ -1,6 +1,6 @@
-import { expect } from 'chai';
 import { Request } from 'express';
 import { createRequestRecord } from './request-factory';
+import { expect } from 'chai';
 
 describe('Request Factory Module', function () {
   describe('createRequestRecord', function () {
@@ -23,7 +23,9 @@ describe('Request Factory Module', function () {
 
       // Verify structure
       expect(record.id).to.be.a('string');
-      expect(record.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i); // UUID v4 format
+      expect(record.id).to.match(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      ); // UUID v4 format
       expect(record.timestamp).to.be.instanceOf(Date);
       expect(record.ip).to.equal(ip);
       expect(record.method).to.equal('POST');
@@ -54,7 +56,9 @@ describe('Request Factory Module', function () {
         body: '',
       } as unknown as Request;
 
-      expect(() => createRequestRecord(mockRequest, '127.0.0.1')).to.throw('Unsupported HTTP method: GET');
+      expect(() => createRequestRecord(mockRequest, '127.0.0.1')).to.throw(
+        'Unsupported HTTP method: GET',
+      );
     });
 
     it('should handle string body correctly', function () {
@@ -152,7 +156,7 @@ describe('Request Factory Module', function () {
         method: 'POST',
         path: '/webhook',
         headers: {
-          'accept': ['application/json', 'text/plain'],
+          accept: ['application/json', 'text/plain'],
           'content-type': 'application/json',
         },
         body: '',

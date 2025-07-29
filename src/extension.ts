@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { WebhookConfig, getConfiguration } from './config';
+import { FileRequestStorage, RequestStorage } from './request-storage';
 import { WebhookServer, WebhookServerImpl } from './webhook-server';
-import { RequestStorage, FileRequestStorage } from './request-storage';
 
 // Global webhook server instance
 let webhookServer: WebhookServer | null = null;
@@ -122,7 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
           'Are you sure you want to clear all stored webhook requests? This action cannot be undone.',
           { modal: true },
           'Clear All',
-          'Cancel'
+          'Cancel',
         );
 
         if (confirmation === 'Clear All') {
