@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { WebhookConfig, getConfiguration } from './config';
 import { FileRequestStorage, RequestStorage } from './request-storage';
+import { WebhookConfig, getConfiguration } from './config';
 import { WebhookServer, WebhookServerImpl } from './webhook-server';
 
 // Global webhook server instance
