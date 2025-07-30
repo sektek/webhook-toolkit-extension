@@ -143,7 +143,7 @@ export class WebhookServerImpl implements WebhookServer {
 
     try {
       // Extract client IP address
-      const ip = req.ip || req.socket.remoteAddress || 'unknown';
+      const ip = req.ip || req.connection.remoteAddress || 'unknown';
 
       // Create request record using factory
       const requestRecord = createRequestRecord(req, ip);
