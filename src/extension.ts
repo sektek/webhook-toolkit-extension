@@ -2,12 +2,19 @@ import * as vscode from 'vscode';
 import { FileRequestStorage, RequestStorage } from './request-storage';
 import { WebhookConfig, getConfiguration } from './config';
 import { WebhookServer, WebhookServerImpl } from './webhook-server';
+import { WebhookStatusBar } from './status-bar';
 
 // Global webhook server instance
 let webhookServer: WebhookServer | null = null;
 
 // Global request storage instance
 let requestStorage: RequestStorage | null = null;
+
+// Global status bar instance
+let webhookStatusBar: WebhookStatusBar | null = null;
+
+// Constants
+const SERVER_NOT_INITIALIZED_ERROR = 'Webhook server not initialized';
 
 /**
  * This method is called when your extension is activated
@@ -27,6 +34,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Create webhook server instance with storage
   webhookServer = new WebhookServerImpl(config, requestStorage);
+
+  // Create status bar instance
+  webhookStatusBar = new WebhookStatusBar(context);
 
   // Register the test command
   const testDisposable = vscode.commands.registerCommand(
@@ -54,7 +64,7 @@ export function activate(context: vscode.ExtensionContext) {
     'webhookTool.startServer',
     async () => {
       if (!webhookServer) {
-        vscode.window.showErrorMessage('Webhook server not initialized');
+        vscode.window.showErrorMessage(SERVER_NOT_INITIALIZED_ERROR);
         return;
       }
 
@@ -70,10 +80,15 @@ export function activate(context: vscode.ExtensionContext) {
           currentConfig.server.autoFindPort,
         );
 
+        // Update status bar
+        webhookStatusBar?.updateStatus(true, actualPort);
+
         vscode.window.showInformationMessage(
           `Webhook server started successfully on port ${actualPort}`,
         );
       } catch (error) {
+        // Ensure status bar reflects actual state on error
+        webhookStatusBar?.updateStatus(false, null);
         vscode.window.showErrorMessage(
           `Failed to start webhook server: ${error instanceof Error ? error.message : error}`,
         );
@@ -86,7 +101,7 @@ export function activate(context: vscode.ExtensionContext) {
     'webhookTool.stopServer',
     async () => {
       if (!webhookServer) {
-        vscode.window.showErrorMessage('Webhook server not initialized');
+        vscode.window.showErrorMessage(SERVER_NOT_INITIALIZED_ERROR);
         return;
       }
 
@@ -97,12 +112,83 @@ export function activate(context: vscode.ExtensionContext) {
 
       try {
         await webhookServer.stop();
+
+        // Update status bar
+        webhookStatusBar?.updateStatus(false, null);
+
         vscode.window.showInformationMessage(
           'Webhook server stopped successfully',
         );
       } catch (error) {
+        // Ensure status bar reflects actual state on error
+        const actualState = webhookServer.isRunning();
+        const actualPort = webhookServer.getPort();
+        webhookStatusBar?.updateStatus(actualState, actualPort);
+
         vscode.window.showErrorMessage(
           `Failed to stop webhook server: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+    },
+  );
+
+  // Register the toggle server command
+  const toggleServerDisposable = vscode.commands.registerCommand(
+    'webhookTool.toggleServer',
+    async () => {
+      if (!webhookServer) {
+        vscode.window.showErrorMessage(SERVER_NOT_INITIALIZED_ERROR);
+        return;
+      }
+
+      try {
+        if (webhookServer.isRunning()) {
+          // Server is running - stop it
+          await vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              title: 'Stopping webhook server...',
+              cancellable: false,
+            },
+            async () => {
+              await webhookServer!.stop();
+              webhookStatusBar?.updateStatus(false, null);
+            },
+          );
+          vscode.window.showInformationMessage(
+            'Webhook server stopped successfully',
+          );
+        } else {
+          // Server is stopped - start it
+          const currentConfig = getConfiguration();
+          await vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              title: 'Starting webhook server...',
+              cancellable: false,
+            },
+            async () => {
+              const actualPort = await webhookServer!.start(
+                currentConfig.server.port,
+                currentConfig.server.autoFindPort,
+              );
+              webhookStatusBar?.updateStatus(true, actualPort);
+              return actualPort;
+            },
+          );
+          const port = webhookServer.getPort();
+          vscode.window.showInformationMessage(
+            `Webhook server started successfully on port ${port}`,
+          );
+        }
+      } catch (error) {
+        // Ensure status bar reflects actual state on error
+        const actualState = webhookServer.isRunning();
+        const actualPort = webhookServer.getPort();
+        webhookStatusBar?.updateStatus(actualState, actualPort);
+
+        vscode.window.showErrorMessage(
+          `Failed to toggle webhook server: ${error instanceof Error ? error.message : error}`,
         );
       }
     },
@@ -174,9 +260,11 @@ export function activate(context: vscode.ExtensionContext) {
     showConfigDisposable,
     startServerDisposable,
     stopServerDisposable,
+    toggleServerDisposable,
     clearStorageDisposable,
     getRequestCountDisposable,
     configChangeDisposable,
+    webhookStatusBar, // Add status bar to disposables
   );
 }
 
@@ -230,14 +318,23 @@ async function restartWebhookServer(config: WebhookConfig): Promise<void> {
 
   try {
     await webhookServer.stop();
+    webhookStatusBar?.updateStatus(false, null);
+
     const actualPort = await webhookServer.start(
       config.server.port,
       config.server.autoFindPort,
     );
+    webhookStatusBar?.updateStatus(true, actualPort);
+
     vscode.window.showInformationMessage(
       `Webhook server restarted successfully on port ${actualPort}`,
     );
   } catch (error) {
+    // Ensure status bar reflects actual state on error
+    const actualState = webhookServer.isRunning();
+    const actualPort = webhookServer.getPort();
+    webhookStatusBar?.updateStatus(actualState, actualPort);
+
     vscode.window.showErrorMessage(
       `Failed to restart webhook server: ${error instanceof Error ? error.message : error}`,
     );
@@ -280,6 +377,12 @@ export async function deactivate() {
         error,
       );
     }
+  }
+
+  // Clean up status bar
+  if (webhookStatusBar) {
+    webhookStatusBar.dispose();
+    webhookStatusBar = null;
   }
 
   webhookServer = null;
