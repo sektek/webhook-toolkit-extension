@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "lastCleanup": "2025-07-29T14:43:31.738Z",
+    "totalRequestsReceived": 2
+  },
+  "requests": [
+    {
+      "id": "4684b936-7afa-4a5a-bb0b-51bcc726af9f",
+      "timestamp": "2025-07-29T14:43:31.762Z",
+      "ip": "127.0.0.1",
+      "method": "POST",
+      "path": "/webhook/test3",
+      "headers": {
+        "content-type": "application/json",
+        "user-agent": "Manual-Test/1.0",
+        "x-test-header": "test-value",
+        "host": "127.0.0.1:3456",
+        "connection": "keep-alive",
+        "transfer-encoding": "chunked"
+      },
+      "body": "{}",
+      "contentType": "application/json",
+      "bodySize": 2
+    },
+    {
+      "id": "a8617a88-0399-4c55-a82e-c8f7dd638333",
+      "timestamp": "2025-07-29T14:43:32.768Z",
+      "ip": "127.0.0.1",
+      "method": "POST",
+      "path": "/cleanup-test/2",
+      "headers": {
+        "content-type": "text/plain",
+        "user-agent": "Manual-Test/1.0",
+        "x-test-header": "test-value",
+        "host": "127.0.0.1:3456",
+        "connection": "keep-alive",
+        "transfer-encoding": "chunked"
+      },
+      "body": "cleanup test 2",
+      "contentType": "text/plain",
+      "bodySize": 14
+    }
+  ]
+}

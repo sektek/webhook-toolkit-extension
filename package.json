@@ -32,6 +32,10 @@
       {
         "command": "webhookTool.clearStorage",
         "title": "Clear Webhook Storage"
+      },
+      {
+        "command": "webhookTool.getRequestCount",
+        "title": "Get Webhook Request Count"
       }
     ],
     "configuration": {

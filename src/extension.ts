@@ -25,8 +25,8 @@ export function activate(context: vscode.ExtensionContext) {
   // Initialize request storage
   requestStorage = new FileRequestStorage(context, config.storage.maxRequests);
 
-  // Create webhook server instance
-  webhookServer = new WebhookServerImpl(config);
+  // Create webhook server instance with storage
+  webhookServer = new WebhookServerImpl(config, requestStorage);
 
   // Register the test command
   const testDisposable = vscode.commands.registerCommand(
@@ -139,6 +139,29 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  // Register the get request count command
+  const getRequestCountDisposable = vscode.commands.registerCommand(
+    'webhookTool.getRequestCount',
+    async () => {
+      if (!requestStorage) {
+        vscode.window.showErrorMessage('Request storage not initialized');
+        return;
+      }
+
+      try {
+        const requests = await requestStorage.getRequests();
+        const count = requests.length;
+        vscode.window.showInformationMessage(
+          `Currently storing ${count} webhook request${count === 1 ? '' : 's'}`,
+        );
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to get request count: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+    },
+  );
+
   // Listen for configuration changes
   const configChangeDisposable = vscode.workspace.onDidChangeConfiguration(
     async e => {
@@ -152,6 +175,7 @@ export function activate(context: vscode.ExtensionContext) {
     startServerDisposable,
     stopServerDisposable,
     clearStorageDisposable,
+    getRequestCountDisposable,
     configChangeDisposable,
   );
 }
@@ -170,6 +194,10 @@ async function handleConfigurationChange(
     // Update server configuration
     if (webhookServer) {
       webhookServer.updateConfig(newConfig);
+      // Ensure storage is still connected if it was set
+      if (requestStorage) {
+        webhookServer.setStorage(requestStorage);
+      }
     }
 
     // If server is running, ask user if they want to restart it
