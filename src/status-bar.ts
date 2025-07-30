@@ -41,11 +41,15 @@ export class WebhookStatusBar {
       this.statusBarItem.color = new vscode.ThemeColor(
         'statusBarItem.warningForeground',
       );
+      this.statusBarItem.backgroundColor = new vscode.ThemeColor(
+        'statusBarItem.warningBackground',
+      );
       this.statusBarItem.tooltip = `Click to start/stop webhook server (Current: Running on port ${port})`;
     } else {
       // Server is stopped
       this.statusBarItem.text = '🔗 Webhook: Stopped';
       this.statusBarItem.color = undefined; // No color for stopped state
+      this.statusBarItem.backgroundColor = undefined; // No background color for stopped state
       this.statusBarItem.tooltip =
         'Click to start/stop webhook server (Current: Stopped)';
     }
