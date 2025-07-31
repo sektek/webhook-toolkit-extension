@@ -1,8 +1,11 @@
+/* eslint-disable sort-imports */
 import * as vscode from 'vscode';
-import { FileRequestStorage, RequestStorage } from './request-storage';
 import { WebhookConfig, getConfiguration } from './config';
+import { FileRequestStorage, RequestStorage } from './request-storage';
+import { WebhookSidebarProvider } from './sidebar-provider';
 import { WebhookServer, WebhookServerImpl } from './webhook-server';
 import { WebhookStatusBar } from './status-bar';
+/* eslint-enable sort-imports */
 
 // Global webhook server instance
 let webhookServer: WebhookServer | null = null;
@@ -12,6 +15,9 @@ let requestStorage: RequestStorage | null = null;
 
 // Global status bar instance
 let webhookStatusBar: WebhookStatusBar | null = null;
+
+// Global sidebar provider instance
+let webhookSidebarProvider: WebhookSidebarProvider | null = null;
 
 // Constants
 const SERVER_NOT_INITIALIZED_ERROR = 'Webhook server not initialized';
@@ -37,6 +43,19 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Create status bar instance
   webhookStatusBar = new WebhookStatusBar(context);
+
+  // Create and register sidebar provider
+  webhookSidebarProvider = new WebhookSidebarProvider(
+    context.extensionUri,
+    webhookServer,
+    requestStorage,
+  );
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      WebhookSidebarProvider.viewType,
+      webhookSidebarProvider,
+    ),
+  );
 
   // Register the test command
   const testDisposable = vscode.commands.registerCommand(
@@ -83,12 +102,18 @@ export function activate(context: vscode.ExtensionContext) {
         // Update status bar
         webhookStatusBar?.updateStatus(true, actualPort);
 
+        // Update sidebar
+        webhookSidebarProvider?.updateStatus();
+
         vscode.window.showInformationMessage(
           `Webhook server started successfully on port ${actualPort}`,
         );
       } catch (error) {
         // Ensure status bar reflects actual state on error
         webhookStatusBar?.updateStatus(false, null);
+
+        // Update sidebar
+        webhookSidebarProvider?.updateStatus();
         vscode.window.showErrorMessage(
           `Failed to start webhook server: ${error instanceof Error ? error.message : error}`,
         );
@@ -116,6 +141,9 @@ export function activate(context: vscode.ExtensionContext) {
         // Update status bar
         webhookStatusBar?.updateStatus(false, null);
 
+        // Update sidebar
+        webhookSidebarProvider?.updateStatus();
+
         vscode.window.showInformationMessage(
           'Webhook server stopped successfully',
         );
@@ -124,6 +152,9 @@ export function activate(context: vscode.ExtensionContext) {
         const actualState = webhookServer.isRunning();
         const actualPort = webhookServer.getPort();
         webhookStatusBar?.updateStatus(actualState, actualPort);
+
+        // Update sidebar
+        webhookSidebarProvider?.updateStatus();
 
         vscode.window.showErrorMessage(
           `Failed to stop webhook server: ${error instanceof Error ? error.message : error}`,
@@ -153,6 +184,7 @@ export function activate(context: vscode.ExtensionContext) {
             async () => {
               await webhookServer!.stop();
               webhookStatusBar?.updateStatus(false, null);
+              webhookSidebarProvider?.updateStatus();
             },
           );
           vscode.window.showInformationMessage(
@@ -173,6 +205,7 @@ export function activate(context: vscode.ExtensionContext) {
                 currentConfig.server.autoFindPort,
               );
               webhookStatusBar?.updateStatus(true, actualPort);
+              webhookSidebarProvider?.updateStatus();
               return actualPort;
             },
           );
@@ -186,6 +219,9 @@ export function activate(context: vscode.ExtensionContext) {
         const actualState = webhookServer.isRunning();
         const actualPort = webhookServer.getPort();
         webhookStatusBar?.updateStatus(actualState, actualPort);
+
+        // Update sidebar
+        webhookSidebarProvider?.updateStatus();
 
         vscode.window.showErrorMessage(
           `Failed to toggle webhook server: ${error instanceof Error ? error.message : error}`,
@@ -248,6 +284,16 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  // Register the open sidebar command
+  const openSidebarDisposable = vscode.commands.registerCommand(
+    'webhookTool.openSidebar',
+    async () => {
+      await vscode.commands.executeCommand(
+        'workbench.view.extension.webhookToolkit',
+      );
+    },
+  );
+
   // Listen for configuration changes
   const configChangeDisposable = vscode.workspace.onDidChangeConfiguration(
     async e => {
@@ -263,6 +309,7 @@ export function activate(context: vscode.ExtensionContext) {
     toggleServerDisposable,
     clearStorageDisposable,
     getRequestCountDisposable,
+    openSidebarDisposable,
     configChangeDisposable,
     webhookStatusBar, // Add status bar to disposables
   );
@@ -326,6 +373,9 @@ async function restartWebhookServer(config: WebhookConfig): Promise<void> {
     );
     webhookStatusBar?.updateStatus(true, actualPort);
 
+    // Update sidebar
+    webhookSidebarProvider?.updateStatus();
+
     vscode.window.showInformationMessage(
       `Webhook server restarted successfully on port ${actualPort}`,
     );
@@ -334,6 +384,9 @@ async function restartWebhookServer(config: WebhookConfig): Promise<void> {
     const actualState = webhookServer.isRunning();
     const actualPort = webhookServer.getPort();
     webhookStatusBar?.updateStatus(actualState, actualPort);
+
+    // Update sidebar
+    webhookSidebarProvider?.updateStatus();
 
     vscode.window.showErrorMessage(
       `Failed to restart webhook server: ${error instanceof Error ? error.message : error}`,

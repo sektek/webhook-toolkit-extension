@@ -40,8 +40,30 @@
       {
         "command": "webhookTool.getRequestCount",
         "title": "Get Webhook Request Count"
+      },
+      {
+        "command": "webhookTool.openSidebar",
+        "title": "Open Webhook Toolkit Sidebar"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "webhookToolkit",
+          "title": "Webhook Toolkit",
+          "icon": "$(link)"
+        }
+      ]
+    },
+    "views": {
+      "webhookToolkit": [
+        {
+          "id": "webhookToolkit.sidebar",
+          "name": "Server Control",
+          "type": "webview"
+        }
+      ]
+    },
     "configuration": {
       "title": "Webhook Toolkit",
       "properties": {
