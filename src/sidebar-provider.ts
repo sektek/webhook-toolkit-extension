@@ -361,7 +361,7 @@ export class WebhookSidebarProvider implements vscode.WebviewViewProvider {
             <span id="server-port" class="status-value">-</span>
         </div>
         <button id="toggle-button" class="button" onclick="toggleServer()">
-            <span class="icon">$(play)</span>
+            <span class="icon">▶</span>
             Start Server
         </button>
     </div>
@@ -389,7 +389,7 @@ export class WebhookSidebarProvider implements vscode.WebviewViewProvider {
             <span id="request-count" class="status-value">0</span>
         </div>
         <button class="button secondary" onclick="clearRequests()">
-            <span class="icon">$(trash)</span>
+            <span class="icon">🗑</span>
             Clear Requests
         </button>
     </div>
@@ -397,7 +397,7 @@ export class WebhookSidebarProvider implements vscode.WebviewViewProvider {
     <div class="section">
         <div class="section-title">Actions</div>
         <button class="link-button" onclick="openSettings()">
-            <span class="icon">$(settings-gear)</span>
+            <span class="icon">⚙</span>
             Open Settings
         </button>
     </div>
@@ -430,12 +430,12 @@ export class WebhookSidebarProvider implements vscode.WebviewViewProvider {
                 statusElement.textContent = 'Running';
                 statusElement.className = 'status-value status-running';
                 portElement.textContent = status.port || '-';
-                toggleButton.innerHTML = '<span class="icon">$(stop)</span>Stop Server';
+                toggleButton.innerHTML = '<span class="icon">⏹</span>Stop Server';
             } else {
                 statusElement.textContent = 'Stopped';
                 statusElement.className = 'status-value status-stopped';
                 portElement.textContent = '-';
-                toggleButton.innerHTML = '<span class="icon">$(play)</span>Start Server';
+                toggleButton.innerHTML = '<span class="icon">▶</span>Start Server';
             }
 
             // Update configuration
