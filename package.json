@@ -44,6 +44,20 @@
       {
         "command": "webhookTool.openSidebar",
         "title": "Open Webhook Toolkit Sidebar"
+      },
+      {
+        "command": "webhookTool.openLogPanel",
+        "title": "Open Webhook Log Panel"
+      },
+      {
+        "command": "webhookTool.openRequestDetails",
+        "title": "Open Request Details",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "webhookTool.deleteRequest",
+        "title": "Delete Request",
+        "icon": "$(trash)"
       }
     ],
     "viewsContainers": {
@@ -51,6 +65,13 @@
         {
           "id": "webhookToolkit",
           "title": "Webhook Toolkit",
+          "icon": "$(link)"
+        }
+      ],
+      "panel": [
+        {
+          "id": "webhookTool.panel",
+          "title": "Webhook Tool",
           "icon": "$(link)"
         }
       ]
@@ -62,8 +83,41 @@
           "name": "Server Control",
           "type": "webview"
         }
+      ],
+      "webhookTool.panel": [
+        {
+          "id": "webhookTool.logView",
+          "name": "Webhook Requests",
+          "when": "webhookTool.hasRequests"
+        }
       ]
     },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "webhookTool.openRequestDetails",
+          "when": "view == webhookTool.logView && viewItem == requestItem",
+          "group": "inline"
+        },
+        {
+          "command": "webhookTool.deleteRequest",
+          "when": "view == webhookTool.logView && viewItem == requestItem",
+          "group": "inline"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "webhookTool.openRequestDetails",
+        "key": "enter",
+        "when": "focusedView == webhookTool.logView"
+      },
+      {
+        "command": "webhookTool.deleteRequest",
+        "key": "delete",
+        "when": "focusedView == webhookTool.logView"
+      }
+    ],
     "configuration": {
       "title": "Webhook Toolkit",
       "properties": {
