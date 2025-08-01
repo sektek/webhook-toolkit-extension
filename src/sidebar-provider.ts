@@ -472,10 +472,8 @@ export class WebhookSidebarProvider implements vscode.WebviewViewProvider {
         }
 
         function clearRequests() {
-            if (confirm('Are you sure you want to clear all stored webhook requests? This action cannot be undone.')) {
-                // Use VS Code command for clearing requests
-                vscode.postMessage({ type: 'clearRequests' });
-            }
+            // Always send the clearRequests message to the extension for confirmation
+            vscode.postMessage({ type: 'clearRequests' });
         }
 
         function openSettings() {
