@@ -44,6 +44,23 @@
       {
         "command": "webhookTool.openSidebar",
         "title": "Open Webhook Toolkit Sidebar"
+      },
+      {
+        "command": "webhookTool.openLogPanel",
+        "title": "Open Webhook Log Panel"
+      },
+      {
+        "command": "webhookTool.openRequestDetails",
+        "title": "Open Request Details"
+      },
+      {
+        "command": "webhookTool.deleteRequest",
+        "title": "Delete Request"
+      },
+      {
+        "command": "webhookTool.refreshLogView",
+        "title": "Refresh Log View",
+        "icon": "$(refresh)"
       }
     ],
     "viewsContainers": {
@@ -61,6 +78,11 @@
           "id": "webhookToolkit.sidebar",
           "name": "Server Control",
           "type": "webview"
+        },
+        {
+          "id": "webhookTool.logView",
+          "name": "Webhook Requests",
+          "when": "webhookTool.hasRequests"
         }
       ]
     },
@@ -107,7 +129,40 @@
           "description": "Maximum number of webhook requests to store in memory"
         }
       }
-    }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "webhookTool.refreshLogView",
+          "when": "view == webhookTool.logView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "webhookTool.openRequestDetails",
+          "when": "view == webhookTool.logView && viewItem == requestItem",
+          "group": "inline"
+        },
+        {
+          "command": "webhookTool.deleteRequest",
+          "when": "view == webhookTool.logView && viewItem == requestItem",
+          "group": "inline"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "webhookTool.openRequestDetails",
+        "key": "enter",
+        "when": "focusedView == webhookTool.logView"
+      },
+      {
+        "command": "webhookTool.deleteRequest",
+        "key": "delete",
+        "when": "focusedView == webhookTool.logView"
+      }
+    ]
   },
   "author": "Edward Kelly <eddie@sektek.net>",
   "repository": {

@@ -2,9 +2,14 @@
 import * as vscode from 'vscode';
 import { WebhookConfig, getConfiguration } from './config';
 import { FileRequestStorage, RequestStorage } from './request-storage';
+import { RequestRecord } from './request-record';
 import { WebhookSidebarProvider } from './sidebar-provider';
 import { WebhookServer, WebhookServerImpl } from './webhook-server';
 import { WebhookStatusBar } from './status-bar';
+import {
+  WebhookLogProvider,
+  WebhookRequestTreeItem,
+} from './log-view-provider';
 /* eslint-enable sort-imports */
 
 // Global webhook server instance
@@ -18,6 +23,9 @@ let webhookStatusBar: WebhookStatusBar | null = null;
 
 // Global sidebar provider instance
 let webhookSidebarProvider: WebhookSidebarProvider | null = null;
+
+// Global log view provider instance
+let webhookLogProvider: WebhookLogProvider | null = null;
 
 // Constants
 const SERVER_NOT_INITIALIZED_ERROR = 'Webhook server not initialized';
@@ -56,6 +64,31 @@ export function activate(context: vscode.ExtensionContext) {
       webhookSidebarProvider,
     ),
   );
+
+  // Create and register log view provider
+  webhookLogProvider = new WebhookLogProvider(requestStorage);
+  context.subscriptions.push(
+    vscode.window.createTreeView('webhookTool.logView', {
+      treeDataProvider: webhookLogProvider,
+      showCollapseAll: false,
+    }),
+  );
+
+  // Update context based on request count
+  updateWebhookContext();
+
+  // Set up periodic refresh for log view (every 5 seconds when server is running)
+  const logRefreshInterval = setInterval(async () => {
+    if (webhookServer?.isRunning()) {
+      webhookLogProvider?.refresh();
+      updateWebhookContext();
+    }
+  }, 5000);
+
+  // Clean up interval on extension deactivation
+  context.subscriptions.push({
+    dispose: () => clearInterval(logRefreshInterval),
+  });
 
   // Register the test command
   const testDisposable = vscode.commands.registerCommand(
@@ -252,6 +285,10 @@ export function activate(context: vscode.ExtensionContext) {
           vscode.window.showInformationMessage(
             'All stored webhook requests have been cleared successfully',
           );
+
+          // Refresh log view and update context
+          webhookLogProvider?.refresh();
+          updateWebhookContext();
         }
       } catch (error) {
         vscode.window.showErrorMessage(
@@ -294,6 +331,98 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  // Register the open log panel command
+  const openLogPanelDisposable = vscode.commands.registerCommand(
+    'webhookTool.openLogPanel',
+    async () => {
+      await vscode.commands.executeCommand('webhookTool.logView.focus');
+    },
+  );
+
+  // Register the refresh log view command
+  const refreshLogViewDisposable = vscode.commands.registerCommand(
+    'webhookTool.refreshLogView',
+    () => {
+      webhookLogProvider?.refresh();
+    },
+  );
+
+  // Register the open request details command
+  const openRequestDetailsDisposable = vscode.commands.registerCommand(
+    'webhookTool.openRequestDetails',
+    async (item: WebhookRequestTreeItem) => {
+      if (!webhookLogProvider) {
+        vscode.window.showErrorMessage('Log provider not initialized');
+        return;
+      }
+
+      // Get request ID from the tree item
+      const requestId = item?.id || item?.request?.id;
+      if (!requestId) {
+        vscode.window.showErrorMessage('No request selected');
+        return;
+      }
+
+      try {
+        const request = await webhookLogProvider.getRequest(requestId);
+        if (!request) {
+          vscode.window.showErrorMessage('Request not found');
+          return;
+        }
+
+        // Create and show request details document
+        const document = await vscode.workspace.openTextDocument({
+          content: formatRequestDetails(request),
+          language: 'json',
+        });
+        await vscode.window.showTextDocument(document);
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to open request details: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+    },
+  );
+
+  // Register the delete request command
+  const deleteRequestDisposable = vscode.commands.registerCommand(
+    'webhookTool.deleteRequest',
+    async (item: WebhookRequestTreeItem) => {
+      if (!webhookLogProvider) {
+        vscode.window.showErrorMessage('Log provider not initialized');
+        return;
+      }
+
+      // Get request ID from the tree item
+      const requestId = item?.id || item?.request?.id;
+      if (!requestId) {
+        vscode.window.showErrorMessage('No request selected');
+        return;
+      }
+
+      try {
+        const confirmation = await vscode.window.showWarningMessage(
+          'Are you sure you want to delete this webhook request?',
+          { modal: true },
+          'Delete',
+          'Cancel',
+        );
+
+        if (confirmation === 'Delete') {
+          await webhookLogProvider.deleteRequest(requestId);
+          vscode.window.showInformationMessage('Request deleted successfully');
+
+          // Update context after deletion
+          updateWebhookContext();
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to delete request: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+    },
+  );
+
   // Listen for configuration changes
   const configChangeDisposable = vscode.workspace.onDidChangeConfiguration(
     async e => {
@@ -310,6 +439,10 @@ export function activate(context: vscode.ExtensionContext) {
     clearStorageDisposable,
     getRequestCountDisposable,
     openSidebarDisposable,
+    openLogPanelDisposable,
+    refreshLogViewDisposable,
+    openRequestDetailsDisposable,
+    deleteRequestDisposable,
     configChangeDisposable,
     webhookStatusBar, // Add status bar to disposables
   );
@@ -408,6 +541,48 @@ function formatConfigurationMessage(config: WebhookConfig): string {
     `Response Body: "${config.server.responseBody}"`,
     `Max Requests: ${config.storage.maxRequests}`,
   ].join('\n');
+}
+
+/**
+ * Format a webhook request for display in a document
+ */
+function formatRequestDetails(request: RequestRecord): string {
+  return JSON.stringify(
+    {
+      id: request.id,
+      timestamp: request.timestamp,
+      method: request.method,
+      path: request.path,
+      ip: request.ip,
+      contentType: request.contentType,
+      bodySize: request.bodySize,
+      headers: request.headers,
+      body: request.body,
+    },
+    null,
+    2,
+  );
+}
+
+/**
+ * Update VS Code context based on webhook request count
+ */
+async function updateWebhookContext(): Promise<void> {
+  if (!requestStorage || !webhookLogProvider) {
+    return;
+  }
+
+  try {
+    const hasRequests = await webhookLogProvider.hasRequests();
+    await vscode.commands.executeCommand(
+      'setContext',
+      'webhookTool.hasRequests',
+      hasRequests,
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Error updating webhook context:', error);
+  }
 }
 
 /**
