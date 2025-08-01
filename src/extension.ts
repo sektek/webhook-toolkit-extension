@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import { WebhookConfig, getConfiguration } from './config';
 import { FileRequestStorage, RequestStorage } from './request-storage';
-import { WebhookLogProvider } from './logViewProvider';
+import { WebhookLogProvider } from './log-view-provider';
 import { RequestRecord } from './request-record';
 import { WebhookSidebarProvider } from './sidebar-provider';
 import { WebhookServer, WebhookServerImpl } from './webhook-server';
@@ -26,6 +26,7 @@ let webhookLogProvider: WebhookLogProvider | null = null;
 
 // Constants
 const SERVER_NOT_INITIALIZED_ERROR = 'Webhook server not initialized';
+const NO_REQUEST_SELECTED_MESSAGE = 'No request selected';
 
 /**
  * This method is called when your extension is activated
@@ -65,7 +66,10 @@ export function activate(context: vscode.ExtensionContext) {
   // Create and register log view provider
   webhookLogProvider = new WebhookLogProvider(requestStorage);
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider('webhookTool.logView', webhookLogProvider),
+    vscode.window.registerTreeDataProvider(
+      'webhookTool.logView',
+      webhookLogProvider,
+    ),
   );
 
   // Set up initial context variable
@@ -280,11 +284,11 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (confirmation === 'Clear All') {
           await requestStorage.clearAll();
-          
+
           // Refresh log view
           webhookLogProvider?.refresh();
           await updateHasRequestsContext();
-          
+
           vscode.window.showInformationMessage(
             'All stored webhook requests have been cleared successfully',
           );
@@ -350,16 +354,15 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       let requestId: string | undefined;
-      
+
       if (item && item.id) {
         requestId = item.id;
       } else {
         // If no item provided, get the selected item from the tree view
         // This handles keyboard shortcuts
-        const selection = await vscode.window.showQuickPick(
-          [],
-          { placeHolder: 'No request selected' }
-        );
+        const selection = await vscode.window.showQuickPick([], {
+          placeHolder: NO_REQUEST_SELECTED_MESSAGE,
+        });
         if (!selection) {
           return;
         }
@@ -402,7 +405,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       let requestId: string | undefined;
-      
+
       if (item && item.id) {
         requestId = item.id;
       }
@@ -582,16 +585,29 @@ function formatRequestDetails(request: RequestRecord): string {
  */
 async function updateHasRequestsContext(): Promise<void> {
   if (!webhookLogProvider) {
-    await vscode.commands.executeCommand('setContext', 'webhookTool.hasRequests', false);
+    await vscode.commands.executeCommand(
+      'setContext',
+      'webhookTool.hasRequests',
+      false,
+    );
     return;
   }
 
   try {
     const hasRequests = await webhookLogProvider.hasRequests();
-    await vscode.commands.executeCommand('setContext', 'webhookTool.hasRequests', hasRequests);
+    await vscode.commands.executeCommand(
+      'setContext',
+      'webhookTool.hasRequests',
+      hasRequests,
+    );
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('Failed to update hasRequests context:', error);
-    await vscode.commands.executeCommand('setContext', 'webhookTool.hasRequests', false);
+    await vscode.commands.executeCommand(
+      'setContext',
+      'webhookTool.hasRequests',
+      false,
+    );
   }
 }
 

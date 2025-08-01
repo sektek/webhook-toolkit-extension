@@ -5,9 +5,15 @@ import { RequestStorage } from './request-storage';
 /**
  * Tree data provider for the webhook request log view
  */
-export class WebhookLogProvider implements vscode.TreeDataProvider<RequestRecord> {
-  private _onDidChangeTreeData: vscode.EventEmitter<RequestRecord | undefined | null | void> = new vscode.EventEmitter<RequestRecord | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<RequestRecord | undefined | null | void> = this._onDidChangeTreeData.event;
+export class WebhookLogProvider
+  implements vscode.TreeDataProvider<RequestRecord>
+{
+  private _onDidChangeTreeData: vscode.EventEmitter<
+    RequestRecord | undefined | null | void
+  > = new vscode.EventEmitter<RequestRecord | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<
+    RequestRecord | undefined | null | void
+  > = this._onDidChangeTreeData.event;
 
   constructor(private requestStorage: RequestStorage) {}
 
@@ -24,23 +30,26 @@ export class WebhookLogProvider implements vscode.TreeDataProvider<RequestRecord
   getTreeItem(element: RequestRecord): vscode.TreeItem {
     const timestamp = this.formatTimestamp(element.timestamp);
     const label = `[${timestamp}] [${element.method}] ${element.path} (${element.ip})`;
-    
-    const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
-    
+
+    const item = new vscode.TreeItem(
+      label,
+      vscode.TreeItemCollapsibleState.None,
+    );
+
     // Set context value for command targeting
     item.contextValue = 'requestItem';
-    
+
     // Set icon based on method
     item.iconPath = new vscode.ThemeIcon(
-      element.method === 'POST' ? 'mail' : 'pencil'
+      element.method === 'POST' ? 'mail' : 'pencil',
     );
-    
+
     // Set tooltip with full request details
     item.tooltip = this.createTooltip(element);
-    
+
     // Store the request ID for command handling
     item.id = element.id;
-    
+
     return item;
   }
 
@@ -52,14 +61,17 @@ export class WebhookLogProvider implements vscode.TreeDataProvider<RequestRecord
       // Root level - return all requests sorted by timestamp (newest first)
       try {
         const requests = await this.requestStorage.getRequests();
-        return requests.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+        return requests.sort(
+          (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
+        );
       } catch (error) {
         // Show error in output channel but return empty array to avoid UI errors
+        // eslint-disable-next-line no-console
         console.error('Failed to load webhook requests:', error);
         return [];
       }
     }
-    
+
     // No children for individual request items
     return [];
   }
@@ -73,7 +85,7 @@ export class WebhookLogProvider implements vscode.TreeDataProvider<RequestRecord
     const hours = String(timestamp.getHours()).padStart(2, '0');
     const minutes = String(timestamp.getMinutes()).padStart(2, '0');
     const seconds = String(timestamp.getSeconds()).padStart(2, '0');
-    
+
     return `${month}/${day} ${hours}:${minutes}:${seconds}`;
   }
 
@@ -88,17 +100,17 @@ export class WebhookLogProvider implements vscode.TreeDataProvider<RequestRecord
       `Timestamp: ${request.timestamp.toLocaleString()}`,
       `Body Size: ${request.bodySize} bytes`,
     ];
-    
+
     if (request.contentType) {
       lines.push(`Content-Type: ${request.contentType}`);
     }
-    
+
     // Add headers (limit to avoid extremely long tooltips)
     const headerCount = Object.keys(request.headers).length;
     if (headerCount > 0) {
       lines.push(`Headers: ${headerCount} header(s)`);
     }
-    
+
     return lines.join('\n');
   }
 
@@ -109,6 +121,7 @@ export class WebhookLogProvider implements vscode.TreeDataProvider<RequestRecord
     try {
       return await this.requestStorage.getRequest(id);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to get request by ID:', error);
       return undefined;
     }
@@ -122,7 +135,9 @@ export class WebhookLogProvider implements vscode.TreeDataProvider<RequestRecord
       await this.requestStorage.deleteRequest(id);
       this.refresh();
     } catch (error) {
-      throw new Error(`Failed to delete request: ${error instanceof Error ? error.message : error}`);
+      throw new Error(
+        `Failed to delete request: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 
@@ -134,6 +149,7 @@ export class WebhookLogProvider implements vscode.TreeDataProvider<RequestRecord
       const requests = await this.requestStorage.getRequests();
       return requests.length > 0;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to check if has requests:', error);
       return false;
     }

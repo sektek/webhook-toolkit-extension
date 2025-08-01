@@ -1,45 +1,67 @@
 {
   "metadata": {
     "version": "1.0.0",
-    "lastCleanup": "2025-07-29T14:43:31.738Z",
-    "totalRequestsReceived": 2
+    "lastCleanup": "2025-08-01T15:10:52.134Z",
+    "totalRequestsReceived": 4
   },
   "requests": [
     {
-      "id": "4684b936-7afa-4a5a-bb0b-51bcc726af9f",
-      "timestamp": "2025-07-29T14:43:31.762Z",
-      "ip": "127.0.0.1",
+      "id": "req-001",
+      "timestamp": "2024-01-01T12:00:00.000Z",
+      "ip": "192.168.1.100",
       "method": "POST",
-      "path": "/webhook/test3",
+      "path": "/webhook/payment",
       "headers": {
         "content-type": "application/json",
-        "user-agent": "Manual-Test/1.0",
-        "x-test-header": "test-value",
-        "host": "127.0.0.1:3456",
-        "connection": "keep-alive",
-        "transfer-encoding": "chunked"
+        "user-agent": "PaymentGateway/1.0",
+        "x-signature": "sha256=abc123"
       },
-      "body": "{}",
+      "body": "{\"event\": \"payment.completed\", \"amount\": 99.99, \"currency\": \"USD\"}",
       "contentType": "application/json",
-      "bodySize": 2
+      "bodySize": 64
     },
     {
-      "id": "a8617a88-0399-4c55-a82e-c8f7dd638333",
-      "timestamp": "2025-07-29T14:43:32.768Z",
-      "ip": "127.0.0.1",
-      "method": "POST",
-      "path": "/cleanup-test/2",
+      "id": "req-002",
+      "timestamp": "2024-01-01T12:15:00.000Z",
+      "ip": "10.0.0.50",
+      "method": "PUT",
+      "path": "/api/users/update",
       "headers": {
-        "content-type": "text/plain",
-        "user-agent": "Manual-Test/1.0",
-        "x-test-header": "test-value",
-        "host": "127.0.0.1:3456",
-        "connection": "keep-alive",
-        "transfer-encoding": "chunked"
+        "content-type": "application/json",
+        "authorization": "Bearer token123"
       },
-      "body": "cleanup test 2",
-      "contentType": "text/plain",
-      "bodySize": 14
+      "body": "{\"userId\": 456, \"name\": \"John Doe\", \"email\": \"john@example.com\"}",
+      "contentType": "application/json",
+      "bodySize": 67
+    },
+    {
+      "id": "req-003",
+      "timestamp": "2024-01-01T12:30:00.000Z",
+      "ip": "172.16.0.25",
+      "method": "POST",
+      "path": "/webhook/github",
+      "headers": {
+        "content-type": "application/json",
+        "x-github-event": "push",
+        "x-github-delivery": "abc-def-123"
+      },
+      "body": "{\"ref\": \"refs/heads/main\", \"commits\": [{\"id\": \"abc123\", \"message\": \"Fix bug\"}]}",
+      "contentType": "application/json",
+      "bodySize": 84
+    },
+    {
+      "id": "req-004",
+      "timestamp": "2024-01-01T12:45:00.000Z",
+      "ip": "203.0.113.15",
+      "method": "POST",
+      "path": "/webhook/stripe",
+      "headers": {
+        "content-type": "application/json",
+        "stripe-signature": "v1=xyz789"
+      },
+      "body": "{\"type\": \"invoice.payment_succeeded\", \"data\": {\"object\": {\"id\": \"in_123\"}}}",
+      "contentType": "application/json",
+      "bodySize": 78
     }
   ]
 }

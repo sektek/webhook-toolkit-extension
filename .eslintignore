@@ -2,3 +2,5 @@ node_modules/
 coverage/
 out/
 dist/
+create-test-data.js
+demo-log-view.js
