@@ -78,7 +78,9 @@
           "id": "webhookToolkit.sidebar",
           "name": "Server Control",
           "type": "webview"
-        },
+        }
+      ],
+      "panel": [
         {
           "id": "webhookTool.logView",
           "name": "Webhook Requests",
