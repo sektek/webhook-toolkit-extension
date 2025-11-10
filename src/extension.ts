@@ -2,6 +2,7 @@
 import * as vscode from 'vscode';
 import { WebhookConfig, getConfiguration } from './config';
 import { FileRequestStorage, RequestStorage } from './request-storage';
+import { WebhookLogProvider } from './log-view-provider';
 import { WebhookSidebarProvider } from './sidebar-provider';
 import { WebhookServer, WebhookServerImpl } from './webhook-server';
 import { WebhookStatusBar } from './status-bar';
@@ -19,8 +20,12 @@ let webhookStatusBar: WebhookStatusBar | null = null;
 // Global sidebar provider instance
 let webhookSidebarProvider: WebhookSidebarProvider | null = null;
 
+// Global log view provider instance
+let webhookLogProvider: WebhookLogProvider | null = null;
+
 // Constants
 const SERVER_NOT_INITIALIZED_ERROR = 'Webhook server not initialized';
+const STORAGE_NOT_INITIALIZED_ERROR = 'Request storage not initialized';
 
 /**
  * This method is called when your extension is activated
@@ -56,6 +61,42 @@ export function activate(context: vscode.ExtensionContext) {
       webhookSidebarProvider,
     ),
   );
+
+  // Create and register log view provider
+  webhookLogProvider = new WebhookLogProvider(requestStorage);
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider(
+      'webhookTool.logView',
+      webhookLogProvider,
+    ),
+  );
+
+  // Update context for view visibility
+  updateRequestContext();
+
+  // Watch for storage file changes to refresh the log view
+  const storageFilePath =
+    context.storageUri?.fsPath || context.globalStorageUri.fsPath;
+  const storagePattern = new vscode.RelativePattern(
+    storageFilePath,
+    'webhook-requests.json',
+  );
+  const storageWatcher =
+    vscode.workspace.createFileSystemWatcher(storagePattern);
+
+  storageWatcher.onDidChange(async () => {
+    webhookLogProvider?.refresh();
+    webhookSidebarProvider?.updateStatus();
+    await updateRequestContext();
+  });
+
+  storageWatcher.onDidCreate(async () => {
+    webhookLogProvider?.refresh();
+    webhookSidebarProvider?.updateStatus();
+    await updateRequestContext();
+  });
+
+  context.subscriptions.push(storageWatcher);
 
   // Register the test command
   const testDisposable = vscode.commands.registerCommand(
@@ -235,7 +276,7 @@ export function activate(context: vscode.ExtensionContext) {
     'webhookTool.clearStorage',
     async () => {
       if (!requestStorage) {
-        vscode.window.showErrorMessage('Request storage not initialized');
+        vscode.window.showErrorMessage(STORAGE_NOT_INITIALIZED_ERROR);
         return;
       }
 
@@ -249,6 +290,8 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (confirmation === 'Clear All') {
           await requestStorage.clearAll();
+          webhookLogProvider?.refresh();
+          await updateRequestContext();
           vscode.window.showInformationMessage(
             'All stored webhook requests have been cleared successfully',
           );
@@ -266,7 +309,7 @@ export function activate(context: vscode.ExtensionContext) {
     'webhookTool.getRequestCount',
     async () => {
       if (!requestStorage) {
-        vscode.window.showErrorMessage('Request storage not initialized');
+        vscode.window.showErrorMessage(STORAGE_NOT_INITIALIZED_ERROR);
         return;
       }
 
@@ -294,6 +337,69 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  // Register the open log panel command
+  const openLogPanelDisposable = vscode.commands.registerCommand(
+    'webhookTool.openLogPanel',
+    async () => {
+      await vscode.commands.executeCommand(
+        'workbench.view.extension.webhookTool.panel',
+      );
+    },
+  );
+
+  // Register the open request details command
+  const openRequestDetailsDisposable = vscode.commands.registerCommand(
+    'webhookTool.openRequestDetails',
+    async (requestId: string) => {
+      if (!requestStorage) {
+        vscode.window.showErrorMessage(STORAGE_NOT_INITIALIZED_ERROR);
+        return;
+      }
+
+      try {
+        const request = await requestStorage.getRequest(requestId);
+        if (!request) {
+          vscode.window.showErrorMessage('Request not found');
+          return;
+        }
+
+        // Create a new untitled document with the request details
+        const doc = await vscode.workspace.openTextDocument({
+          content: formatRequestDetails(request),
+          language: 'json',
+        });
+        await vscode.window.showTextDocument(doc);
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to open request details: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+    },
+  );
+
+  // Register the delete request command
+  const deleteRequestDisposable = vscode.commands.registerCommand(
+    'webhookTool.deleteRequest',
+    async (requestId: string) => {
+      if (!requestStorage) {
+        vscode.window.showErrorMessage(STORAGE_NOT_INITIALIZED_ERROR);
+        return;
+      }
+
+      try {
+        await requestStorage.deleteRequest(requestId);
+        webhookLogProvider?.refresh();
+        webhookSidebarProvider?.updateStatus();
+        await updateRequestContext();
+        vscode.window.showInformationMessage('Request deleted successfully');
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Failed to delete request: ${error instanceof Error ? error.message : error}`,
+        );
+      }
+    },
+  );
+
   // Listen for configuration changes
   const configChangeDisposable = vscode.workspace.onDidChangeConfiguration(
     async e => {
@@ -310,6 +416,9 @@ export function activate(context: vscode.ExtensionContext) {
     clearStorageDisposable,
     getRequestCountDisposable,
     openSidebarDisposable,
+    openLogPanelDisposable,
+    openRequestDetailsDisposable,
+    deleteRequestDisposable,
     configChangeDisposable,
     webhookStatusBar, // Add status bar to disposables
   );
@@ -408,6 +517,58 @@ function formatConfigurationMessage(config: WebhookConfig): string {
     `Response Body: "${config.server.responseBody}"`,
     `Max Requests: ${config.storage.maxRequests}`,
   ].join('\n');
+}
+
+/**
+ * Format request details for display
+ */
+function formatRequestDetails(request: {
+  id: string;
+  timestamp: Date;
+  method: string;
+  path: string;
+  ip: string;
+  headers: Record<string, string>;
+  body: string;
+  contentType?: string;
+  bodySize: number;
+}): string {
+  return JSON.stringify(
+    {
+      id: request.id,
+      timestamp: request.timestamp.toISOString(),
+      method: request.method,
+      path: request.path,
+      ip: request.ip,
+      contentType: request.contentType,
+      bodySize: request.bodySize,
+      headers: request.headers,
+      body: request.body,
+    },
+    null,
+    2,
+  );
+}
+
+/**
+ * Update the context for view visibility
+ */
+async function updateRequestContext(): Promise<void> {
+  if (!requestStorage) {
+    return;
+  }
+
+  try {
+    const requests = await requestStorage.getRequests();
+    await vscode.commands.executeCommand(
+      'setContext',
+      'webhookTool.hasRequests',
+      requests.length > 0,
+    );
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Error updating request context:', error);
+  }
 }
 
 /**
