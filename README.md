@@ -2,6 +2,16 @@
 
 This is a Visual Studio Code extension for developing with webhooks. It provides tools and features to streamline the process of working with webhooks in your projects.
 
+## Features
+
+### Webhook Log Panel
+- View captured webhook requests in VS Code's bottom panel area
+- Real-time updates when new requests arrive
+- Sort by timestamp (newest first)
+- Context menu actions: Open Details, Delete Request
+- Keybindings: Enter to view details, Delete to remove
+- Different icons for POST vs PUT requests
+
 ## Development
 
 ### Building the Extension
